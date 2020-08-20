@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <% if(htmlWebpackPlugin.options.config.header) { %>
+    <link rel="stylesheet" type="text/css" href="./header.css" />
+    <% } %>
+    <title><%= (htmlWebpackPlugin.options.config.title) %></title>
+  </head>
+  <body>
+    <!-- 这种使用相对路径来引用本地图片，需要配合使用html-withimg-loader才能成功 --->
+    <!-- <img src="../src/img/avatar.png" alt="加载本地图片" /> -->
+    <img
+      src="<%= require('../src/img/less-ten-img.png') %>"
+      alt="使用vm、ejs模板语法来加载本地图片"
+    />
+  </body>
+  <% if(htmlWebpackPlugin.options.config.footer) { %>
+  <script src="./footer.js" type="text/javascript"></script>
+  <% } %>
+</html>
