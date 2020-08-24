@@ -45,9 +45,45 @@ const newWebDeveloper = new WebDeveloper({ name: 'wjm', age: '24' })
 console.log('新生成的开发者', newWebDeveloper)
 ```
 
-自 webpack4.0 以后，webpack 内置了基础的配置文件，所以即使没有写任何配置文件，也可直接使用。命令行输入`npx webpack --mode=development`，因为 webpack 构建时默认的`mode`是`production`，这里为了了解打包后的代码发生了什么改变，故而使用`development`。执行命令以后可以看到，项目下多出了个`dist`目录，目录下有一个构建出来的`main.js`文件
+## webpack 入口配置
 
-查看`dist/main.js`文件，可以看到还是高版本的代码，并没有被转化成可兼容老版本浏览器的低版本代码，这显然不是 webpack 构建所期待的结果。
+在根目录下新建一个`webpack`配置文件`webpack.config.js`。
+
+`webpack`打包时，通过入口文件来获取整个项目项目的依赖。`webpack`的入口字段为`entry`，`entry`的值可以是一个字符串，或者一个数组，亦或是一个对象
+
+```js
+//  webpack.config.js
+module.exports = {
+  //  以我们新建的index.js文件为入口
+  entry: './src/index.js'
+}
+```
+
+## webpack 出口配置
+
+通过配置`output`，可以控制`webpack`如何输出编译文件，常用的`output`配置如下
+
+```js
+//  webpack.config.js
+const path = require('path')
+module.exports = {
+  entry: './src/index.js'，
+  output: {
+    //  打包后的文件放在哪个目录，必须是绝对路径，这里的配置是打包后放在项目根目录下的`dist`文件夹
+    path: path.resolve(__dirname, 'dist'),
+    //  打包后的文件命名
+    filename: 'bundle.js',
+    //  这个通常是设置为CDN地址
+    publicPath: ''
+  }
+}
+```
+
+假如我们打包编译出来的项目，是部署在 CDN 上的，上线后的地址是`https://my.cdn.com/myproject/index`，那么可以将生产环境下的打包配置中的`publicPath`指定为`https://my.cdn.com`。考虑到 CDN 缓存的问题，输出的打包文件名需要加上 hash，比如设置为`filename:'bundle.[hash:6].js'`
+
+自 webpack4.0 以后，webpack 内置了基础的配置文件，所以即使没有写任何配置文件，也可直接使用。当然我们这里写了个 webpack 配置文件的`entry`字段和`output`字段，命令行输入`npx webpack --mode=development`，因为 webpack 构建时默认的`mode`是`production`，这里为了了解打包后的代码发生了什么改变，故而使用`development`。执行命令以后可以看到，项目下多出了个`dist`目录，目录下有一个构建出来的`bundle.js`文件
+
+查看`dist/bundle.js`文件，可以看到还是高版本的代码，并没有被转化成可兼容老版本浏览器的低版本代码，这显然不是 webpack 构建所期待的结果。
 
 ## 4.Babel
 
@@ -69,7 +105,7 @@ Babel 是一个工具链，主要是用来将 ECMAScript2015+的高版本 JS 代
 
 @babel/plugin-transform-runtime--这是一个可以重复使用 Babel 注入的帮助程序，以节省代码大小的插件。需要注意的是，`@babel/plugin-transform-runtime` 需要和 `@babel/runtime` 配合使用。`@babel/plugin-transform-runtime` 通常仅在开发时使用，但是运行时最终代码需要依赖 `@babel/runtime`，所以 `@babel/runtime` 必须要作为生产依赖被安装
 
-了解以上一些基础知识以后，在根目录下新建一个 webpack 配置文件`webpack.config.js`
+安装完依赖之后，修改`webapck`配置文件
 
 ```js
 //  webpack.config.js
@@ -302,4 +338,164 @@ module.exports = {
 
 ## 处理 CSS 文件
 
+`webpack`不能直接处理 CSS 文件，需要借助与 CSS 相关 loader 的来处理，常用的有`style-loader`、`css-loader`，考虑到兼容性问题，还需要使用`postcss-loader`。如果项目用了 CSS 预处理语言，比如`less`或`sass`或`stylus`，那么就需要相应的 loader--`less-loader`、`sass-loader`、`stylus-loader`。在这里，配置`less`的使用，首先安装相关依赖，`npm install -D less autoprefixer postcss-loader less-loader css-loader style-loader`。接着修改`webpack`配置文件
+
+```js
+//  webpack.config.js
+module.exports = {
+  //  ...
+  module: {
+    rules: [
+      {
+        test: /\.(le|c)ss$/,
+        use: [
+          //  style-loader，动态创建style标签，将css插入到head中
+          'style-loader',
+          //  负责处理@import语句
+          'css-loader',
+          //  postcss-loader和autoprefixer，自动生成浏览器兼容性前缀
+          {
+            loader: 'postcss-loader',
+            options: {
+              plugins: function() {
+                return {
+                  require('autoprefixer').({
+                    'overrideBrowserslist': [
+                      '>0.25%',
+                      'not dead'
+                    ]
+                  })
+                }
+              }
+            }
+          },
+          //  less-loader，编译处理.less文件，将其转为.css文件
+          'less-loader'
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## 处理图片/字体文件
+
+在上一步处理后，项目的 webpack 配置已经可以处理`.less`文件了，写个 body 的样式
+
+```css
+body {
+  background: url('../images/avatar.png');
+}
+```
+
+运行一下，控制台会提示图片资源 webpack 无法直接处理，同样式文件一样，图片资源也需要相应的 loader。我们常用`url-loader`和`file-loader`。`url-loader`与`file-loader`功能类似，但是前者可以设置指定文件在小于多少资源时，文件经过`file-loader`处理返回`DataURL`。
+
+安装下相关依赖`npm install -D url-loader file-loader`，然后修改 webpack 配置文件
+
+```js
+//  webapck.config.js
+module.exports = {
+  //  ...
+  module: {
+    rules: [
+      {
+        tets: /\.(png|jpg|gif|jpeg|webp|svg|eot|ttf|woff|woff2)$/,
+        use: [
+          {
+            loader: 'url-loader',
+            options: {
+              //  小于文件资源小于10k时，被处理的文件资源以DataURL返回，比如某张小于10k的图，被处理后变成了base64的字符串
+              limit: 10240,
+              esModule: false
+            }
+          }
+        ],
+        exclude: /node_modules/
+      }
+    ]
+  }
+}
+```
+
+以上配置中，limit 的值设为 10240，当文件资源小于 10k 时，会将资源转换为 base64 形式的字符串，超过 10k，将图片拷贝到 dist 目录。`esModule`需要设置为 false，否则`<img src={require('xxx.png')} />`会出现`<img src=[Module Object] />`
+
+将文件资源转换成 base64 可以减少网络请求次数，但是 base64 数据较大，如果项目里太多资源时 base64，会导致加速变慢，所以需要设置一个合适的 limit 值，做到两者兼顾。
+
+默认情况下，经过`url-loader`处理生成的文件名时文件内容的`MD5`哈希值，保留原始资源的拓展名，这可能导致原始资源难以查询。可以通过设置`url-loader`的 options，修改文件的生成名
+
+```js
+//  ...
+use: [
+  {
+    loader: 'url-loader'，
+    options: {
+      limit: 10240,
+      esModule: false,
+      name: '[name]_[hash:6].[ext]'
+    }
+  }
+]
+```
+
+当项目中本地资源较多时，我们会希望它们能够打包在同一个文件夹下，`url-loader`在 options 中指定`output`就可以做到
+
+```js
+use: [
+  {
+    loader: 'url-loader'，
+    options: {
+      limit: 10240,
+      esModule: false,
+      name: '[name]_[hash:6].[ext]',
+      outpath: 'assets'
+    }
+  }
+]
+```
+
+这时候执行`npm run build`，我们就能在构建目录`dist`下发现增加一个`assets`目录，里面都是被处理过的图片资源
+
+## 每次打包前自动清空 dist 目录
+
+多次运行`npm run dev`后，我们会发现`dist`目录下的文件越来越多，着实影响打包文件查看。除了手动清空`dist`目录，我们还可以使用`clean-webpack-plugin`来自动清空
+
+安装依赖`npm install -D clean-webpack-plugin`
+
+然后修改`webpack`配置文件
+
+```js
+//  webpack.config.js
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+module.exports = {
+  //  ...
+  plugins: [
+    //  不需要额外参数，会自动获取output的配置，然后取清空
+    new CleanWebpackPlugin()
+  ]
+}
+```
+
+这样每次运行`npm run dev`时，都先会把`dist`目录下上次打包出来的文件清空，这样每次打完包后，`dist`目录下都是当前命令生成的新文件。
+
+不过有时候，我们也会希望`dist`下面某些文件能做保留，比如某些可复用的、不需要多次打包的模块，最典型的就是`DLL`。
+
+所谓的 DLL 就是把事先常用但有构建时间长的代码提前打包好（react、react-dom、vue 等），取名叫做 DLL。
+
+那么`dist`目录下相关的`dll`，肯定是不希望直接被删除的，那么可以给`clean-webpack-plugin`加参数
+
+```js
+//  webpack.config.js
+module.exports = {
+  //  ...
+  plugins: [
+    new CleanWebpackPlugin({
+      //  不删除dll目录及其下面的文件
+      cleanOnceBeforeBuildPatterns: ['**/*', '!dll', '!dll/**']
+    })
+  ]
+}
+```
+
+## 总结
+
+通过以上步骤，在实践中完成了一个 webpack 基础配置，了解了 webpack 的四个核心--入口(entry)、出口(output)、处理器(loader)、插件(plugin)，并通过一些处理器和插件的具体使用，整理了一些项目开发中常用的配置。
