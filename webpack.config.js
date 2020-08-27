@@ -38,7 +38,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         use: ['babel-loader'],
-        exclude: /node_modules/
+        include: /src/
         /**
          * 如若需要在weback.config.js中配置babel
          * 那么只需要新添options属性，参考如下
@@ -72,7 +72,7 @@ module.exports = {
           },
           'less-loader'
         ],
-        exclude: /node_modules/
+        include: /src/
       },
       {
         test: /\.(png|jpg|gif|jpeg|webp|svg|eot|ttf|woff|woff2|jfif)$/,
@@ -98,7 +98,7 @@ module.exports = {
             }
           }
         ],
-        exclude: /node_modules/
+        include: /src/
       }
     ]
   },
